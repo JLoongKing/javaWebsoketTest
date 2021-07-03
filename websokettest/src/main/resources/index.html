@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>传呼机</title>
+     
+    <!-- jQuery (Bootstrap 的所有 JavaScript 插件都依赖 jQuery，所以必须放在前边) -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@1.12.4/dist/jquery.min.js" integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ" crossorigin="anonymous"></script>
+
+    <!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+
+    <!-- 可选的 Bootstrap 主题文件（一般不用引入） -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap-theme.min.css" integrity="sha384-6pzBo3FDv/PJ8r2KRkGHifhEocL+1X2rVCTTkUfGk7/0pbek5mMa1upzvWbrUbOZ" crossorigin="anonymous">
+
+    <!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+  
+</head>
+
+<body>
+
+<h3 style="padding-bottom: 100px;" class="text-center">传呼机测试</h3>
+<div class="row">
+    <div class="col-md-3 col-md-offset-1">
+        <h4 class="text-center">当前局域用户</h4>
+        <ul id="userlist" class="list-group">
+           
+        </ul>
+    </div>
+    <div class="col-md-6 col-md-offset-1">
+        <div class="col-md-8 col-md-offset-1">
+            <textarea id="message" class="form-control" placeholder="message"></textarea>
+        </div>
+        <div class="col-md-2 col-md-offset-1">
+            <button onclick="send()" type="button" class="btn btn-info">提交</button>
+        </div>
+        <div class="col-md-10 col-md-offset-1" >
+            <ul id="messagelist" class="list-group" style="padding-top: 20px;">
+                <h4 class="text-center">消息区</h4>
+            </ul>
+        </div>
+    </div>
+</div>
+
+
+<script type="text/javascript">
+
+    lat = 31.234823;
+    lng = 121.533489;
+    uuid = getUuid();
+    
+    var socket;
+    if (typeof (WebSocket) == "undefined") {
+        console.log("遗憾：您的浏览器不支持WebSocket");
+    } else {
+        console.log("恭喜：您的浏览器支持WebSocket");
+
+        //实现化WebSocket对象
+        //指定要连接的服务器地址与端口建立连接
+        //注意ws、wss使用不同的端口。我使用自签名的证书测试，
+        //无法使用wss，浏览器打开WebSocket时报错
+        //ws对应http、wss对应https。
+        socket = new WebSocket("ws://localhost:8080/ws/asset");
+        //连接打开事件
+        socket.onopen = function() {
+            alert("服务已连接");
+            var json = {"action":"open", "uuid":uuid,"lat":lat,"lng":lng};
+            socket.send(JSON.stringify(json));
+
+        };
+        //收到消息事件
+        socket.onmessage = function(msg) {
+            
+            var obj = JSON.parse(msg.data);
+       
+            if(obj.action=="adduser"){
+                for(var i=0;i<obj.userlist.length;i++)
+                    $("#userlist").append('<p class="bg-info">'+obj.userlist[i]+'</p>');
+            }
+            if(obj.action=="sendmessage"){
+               
+                $("#messagelist").append('<li class="list-group-item" style="border: 0;">'+obj.uuid+':  '+obj.message+'</li>');
+            }
+        };
+        socket.onclose = function(){ 
+            // 关闭 websocket
+            alert("连接已关闭..."); 
+        }
+        //发生了错误事件
+        socket.onerror = function() {
+            alert("Socket发生了错误");
+        }
+
+        //窗口关闭时，关闭连接
+        window.unload=function() {
+            socket.close();
+        };
+    }
+    // function sendmessage(message) {
+    //     var json = {"action":"sendmessage", "uuid":uuid};
+    //     socket.send(JSON.stringify(json));
+    // }
+    function send() {
+        var json = {"message":$("#message").val(), "uuid":uuid, "action":"sendmessage","lat":lat,"lng":lng};
+      
+        socket.send(JSON.stringify(json));
+    }
+    function getUuid() {
+
+        var s = [];
+
+        var hexDigits = "0123456789abcdef";
+
+        for (var i = 0; i < 36; i++) {
+
+            s[i] = hexDigits.substr(Math.floor(Math.random() * 0x10), 1);
+
+        }
+
+        s[14] = "4";  // bits 12-15 of the time_hi_and_version field to 0010
+
+        s[19] = hexDigits.substr((s[19] & 0x3) | 0x8, 1);  // bits 6-7 of the clock_seq_hi_and_reserved to 01
+
+        s[8] = s[13] = s[18] = s[23] = "-";
+
+
+
+        var uuid = s.join("");
+
+        return uuid;
+
+    }
+</script>
+
+</body>
+</html>
